@@ -12,11 +12,12 @@ class Style:
     group_margin = 10
     fontfamily = 'monospace'
     fontwidth_proportion = 0.6
+    textanchor = 'start'
     
     table_bold_fontwidth_proportion = 0.67
     table_fontwidth_proportion = 0.6
     table_colpadding = 5
-    table_fontsize = 9
+    table_fontsize = 8
     table_oversize_proportion = 1.3
     table_fontfamily = '-apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol"'
     

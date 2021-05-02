@@ -1,6 +1,8 @@
 import re
 import textwrap
 
+from itertools import zip_longest
+
 from lxml import etree
 from lxml.builder import E
 from .base import StylizedElement
@@ -8,9 +10,10 @@ from .group import GroupSequence
 
 class Text(StylizedElement):
     
-    def __init__(self, text, **kwargs):
+    def __init__(self, text, color='black', **kwargs):
         super().__init__(**kwargs)
         self.text = text
+        self.color = color
 
     def build(self, style):
         fontsize = style.fontsize
@@ -18,87 +21,51 @@ class Text(StylizedElement):
             'font-family': f'{style.fontfamily}', 
             'font-size': f'{fontsize}'
         })
-        spacehack = True
+        #spacehack = True
         ystep = fontsize + 5
         lines = self.text.split('\n')
         self.width = 0
         for yi, line in enumerate(lines):
             self.width = max(self.width, len(line) * fontsize * style.fontwidth_proportion)
-            if spacehack:
-                line = line.expandtabs().replace(' ', '&#160;')
+            #if spacehack:
+            #    line = line.expandtabs().replace(' ', '&#160;')
             self.element.append(E.text(
-                etree.XML(self.interp_ansi(line)),
-                #E.tspan(line, {'fill': 'black'}),
-                {'x': '0', 'y': f'{fontsize + ystep * yi}', 
+                *self.interp_ansi(line),
+                {'x': '0', 'y': f'{fontsize + ystep * yi}', 'text-anchor': style.textanchor,
                  '{http://www.w3.org/XML/1998/namespace}space': 'preserve'}
             ))
         self.height = len(lines) * ystep
         
     def interp_ansi(self, line):
-        # From: https://github.com/markrages/ansi_svg/blob/master/ansi_svg.py
-        def rgb(r,g,b): return "#%02x%02x%02x"%(r,g,b)
-        br_on = 255
-        br_off = 85
-        norm_on = 187
+        intensity_map = {
+            0: {},
+            1: {'font-weight': 'bold'},
+        }
+        color_map = {
+            30: {'fill': 'black'}, # black
+            0: {'fill': self.color}, # black
+            31: {'fill': 'rgb(187, 0, 0)'}, # red
+            32: {'fill': 'rgb(0, 187, 0)'}, # green
+            33: {'fill': 'rgb(187, 187, 0)'}, # yellow
+            34: {'fill': 'rgb(0, 0, 187)'}, # blue
+            35: {'fill': 'rgb(187, 0, 187)'}, # magenta
+            36: {'fill': 'rgb(0, 187, 187)'}, # cyan
+            37: {'fill': 'rgb(187, 187, 187)'}, # white
+        }
 
-        colortab = {(0,30):rgb( br_off, br_off, br_off), # black
-            (0,31):rgb(  br_on, br_off, br_off), # red
-            (0,32):rgb( br_off,  br_on, br_off), # green
-            (0,33):rgb(  br_on,  br_on, br_off), # yellow
-            (0,34):rgb( br_off, br_off,  br_on), # blue
-            (0,35):rgb(  br_on, br_off,  br_on), # magenta
-            (0,36):rgb( br_off,  br_on,  br_on), # cyan
-            (0,37):rgb(  br_on,  br_on,  br_on), # white
-            (1,30):rgb(      0,      0,      0), # black
-            (1,31):rgb(norm_on,      0,      0), # red
-            (1,32):rgb(      0,norm_on,      0), # green
-            (1,33):rgb(norm_on,norm_on,      0), # yellow
-            (1,34):rgb(      0,      0,norm_on), # blue
-            (1,35):rgb(norm_on,      0,norm_on), # magenta
-            (1,36):rgb(      0,norm_on,norm_on), # cyan
-            (1,37):rgb(norm_on,norm_on,norm_on)  # white
-            }
+        parse = re.split(r'\x1b\[([0-9;]*)m',line)
+        it = iter(parse)
+        result = [E.tspan(next(it), {'fill': self.color})]
 
-        self.ansicolor = (0,0)
-        ret = '<tspan fill="black">'
-
-        # Look for 'm' command
-        parse=re.split(r'\x1b\[([0-9;]*)m',line)
+        for control, text in zip_longest(it, it):
+            control = list(map(int, control.split(';')))
+            control = [0] * (2 - len(control)) + control
+            intensity, color = control
+            attr = {**intensity_map.get(intensity, {}), 
+                    **color_map.get(color, {'fill': self.color})}
+            result.append(E.tspan(text, attr))
         
-        while parse:
-            ret += parse.pop(0)
-            if not parse: 
-                break
-            csr = parse.pop(0)
-            if not csr:
-                args = []
-            else:
-                args = [int(a) for a in csr.split(';') if a]
-
-            if len(args)==2:
-                intensity, color = args
-            elif len(args)==1:
-                intensity, color = [0]+args
-            else:
-                intensity, color = 0,0
-            
-
-            if self.ansicolor != (intensity,color):
-                if self.ansicolor != (0,0):
-                    ret += '</tspan>'
-
-                if (intensity,color) != (0,0):
-                    try:
-                        ret += f'<tspan fill="{colortab[(intensity, color)]}">'
-                    except KeyError:
-                        ret += f'<tspan id="unknown_{repr(intensity,color)}">'
-
-                self.ansicolor = intensity,color
-
-        ret += '</tspan>'
-        self.ansicolor = (0,0)
-
-        return ret
+        return result
 
     def __repr__(self):
         return f'Text({self.text!r})'

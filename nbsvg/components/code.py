@@ -25,7 +25,7 @@ class Code(StylizedElement):
         self.element = E.g(
             E.rect({
                 'x': '0', 'y': '0', 'width': f'{self.width}', 'height': f'{self.height}',
-                'fill': 'rgb(245, 245, 245)', 'stroke': ''
+                'fill': 'rgb(245, 245, 245)', 'stroke': 'rgb(222, 222, 222)'
             }),
             E.g(
                 etree.fromstring(f'<g>{cellcode}</g>', parser=etree.XMLParser(recover=True)), {

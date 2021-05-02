@@ -10,5 +10,6 @@ setup(
         "Pillow",
         "imgkit",
         'mistune',
+        'nbformat',
     ],
 )

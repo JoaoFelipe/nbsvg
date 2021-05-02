@@ -35,6 +35,7 @@ class GroupSequence(StylizedElement):
         super().__init__(**kwargs)
         self.items = items or []
         self.etype = etype
+        self.undo = {}
 
     def build(self, style):
         self.element = self.etype()
@@ -43,9 +44,10 @@ class GroupSequence(StylizedElement):
         for obj, sep in self.items:
             self.element.append(
                 obj
-                .translate(0, self.height, add=True)
+                .translate(0, self.height - self.undo.get(id(obj), 0), add=True)
                 .do_build(style).element
             )
+            self.undo[id(obj)] = self.height
             self.height += obj.height + sep
             self.width = max(self.width, obj.width)
 

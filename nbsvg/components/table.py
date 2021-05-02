@@ -21,7 +21,10 @@ def extract_df_data(dom):
             })
         table_data.append(table_row)
 
-    p_data = dom.xpath("//p")[0].text
+    p_data = None
+    findp = dom.xpath("//p")
+    if findp:
+        p_data = findp[0].text
     return header_rows, table_data, p_data
 
 
@@ -39,15 +42,25 @@ def get_column_sizes(table_data, style):
 
 class Table(StylizedElement):
 
-    def __init__(self, table_data, header_rows, rcol={}, **kwargs):
+    def __init__(self, table_data, header_rows, rcol={}, rdata={}, **kwargs):
         super().__init__(**kwargs)
         self.table_data = table_data
         self.header_rows = header_rows
         self.rcol = rcol
+        self.rdata = rdata
 
     def build(self, style):
         table_data = self.table_data
-        header_rows = self.header_rows 
+        header_rows = self.header_rows
+
+        for (i, j), value in self.rdata.items():
+            if isinstance(value, str):
+                table_data[i][j]['lines'] = [value]
+            elif isinstance(value, list):
+                table_data[i][j]['lines'] = value
+            else:
+                table_data[i][j] = value
+
         
         col_sizes = get_column_sizes(table_data, style)
         for key, value in self.rcol.items():
@@ -102,8 +115,8 @@ class Table(StylizedElement):
 
 class WrapTable(Table):
 
-    def __init__(self, table_data, header_rows, rlen={}, rcol={}, **kwargs):
-        super().__init__(table_data, header_rows, rcol=rcol, **kwargs)
+    def __init__(self, table_data, header_rows, rlen={}, rcol={}, rdata={}, **kwargs):
+        super().__init__(table_data, header_rows, rcol=rcol, rdata=rdata, **kwargs)
         self.rlen = rlen
 
     def build(self, style):
@@ -142,12 +155,14 @@ class DataframeTable(StylizedElement):
         table = WrapTable(table_data, header_rows, **self.kwargs).do_build(style)
         self.element = table.element
         self.width = table.width
-        self.element.append(E.text(
-            etree.XML(f'<tspan fill="black">{p_data}</tspan>'),
-            {'x': '0', 'y': f'{style.table_fontsize + table.height}', 
-             '{http://www.w3.org/XML/1998/namespace}space': 'preserve'}
-        ))
-        self.height = table.height + style.table_fontsize + 5
+        self.height = table.height
+        if p_data:
+            self.element.append(E.text(
+                etree.XML(f'<tspan fill="black">{p_data}</tspan>'),
+                {'x': '0', 'y': f'{style.table_fontsize + table.height}', 
+                '{http://www.w3.org/XML/1998/namespace}space': 'preserve'}
+            ))
+            self.height += style.table_fontsize + 5
 
     def __repr__(self):
         return f'DataframeTable({self.dom!r})'
