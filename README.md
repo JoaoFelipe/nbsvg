@@ -8,10 +8,10 @@ This tool is not complete in any means. I made it to create images for a documen
 
 ## Installation
 
-To install nbsvg:
+To install nbsvg, clone the repository and run
 
 ```
-$ pip install nbsvg
+$ pip install -e nbsvg
 ```
 
 nbsvg uses [imgkit](https://github.com/jarrekk/imgkit) for exporting HTML outputs as images. Hence you may need to install [wkhtmltopdf](https://wkhtmltopdf.org/) as well.
